@@ -5,6 +5,8 @@
   현재 버전: v2.3  (2026-06-10)
 ─────────────────────────────────────────────────────────────────
   변경 이력:
+v2.3.4 — 단어암기 탭에 모르는 단어 별표시
+v2.3.3 — 오답단어에 모르는 단어 별표시
   v2.3 — Daily Test 로딩 중 상태 표시
   v2.2 — 모바일 탭 라벨 축약 (오답/Test/암기) + 시험 개수 뱃지
   v2.1 — 첫 화면을 Daily Test 로 변경
@@ -212,6 +214,22 @@
   .qz-start-btn{background:#7036e3;color:#fff;border:none;border-radius:16px;padding:13px 30px;font-family:'Inter',sans-serif;font-size:.8rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;box-shadow:0 4px 16px rgba(112,54,227,.25);min-height:46px;margin-top:4px;transition:transform .15s;touch-action:manipulation;}
   .qz-start-btn:active{transform:scale(.97);}
   .qz-start-btn.retry{background:#be185d;box-shadow:0 4px 16px rgba(190,24,93,.25);}
+
+  /* ★ 별표 버튼 — 단어암기 퀴즈카드 우상단, TTS 왼쪽 */
+  .qz-star-corner{position:absolute;top:14px;right:60px;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.9);backdrop-filter:blur(4px);border:1.5px solid #e2dcd8;color:#b0aab8;font-size:1.25rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;transition:all .18s;touch-action:manipulation;padding:0;}
+  .qz-star-corner:active{transform:scale(.85);}
+  .qz-star-corner.starred{color:#f5b300;background:#fff8d6;border-color:#f5b300;animation:qzStarPop .32s cubic-bezier(.175,.885,.32,1.275);}
+  @keyframes qzStarPop{0%{transform:scale(1)}50%{transform:scale(1.25)}100%{transform:scale(1)}}
+  .qz-card-line.starred-line{background:linear-gradient(90deg,#f5b300 0%,#ffd966 100%)!important;}
+
+  /* ★ 단어암기 탭 별표 진입 배너 (별표 단어 있을 때만 표시) */
+  .vocab-starred-banner{display:flex;align-items:center;justify-content:space-between;gap:1rem;background:#fff8d6;border:1.5px solid #f5b300;border-radius:10px;padding:1.1rem 1.4rem;box-shadow:0 2px 12px rgba(245,179,0,.12);position:relative;overflow:hidden;margin-bottom:1.6rem;}
+  .vocab-starred-banner::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:#f5b300;}
+  .vsb-label{font-family:'Inter',sans-serif;font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#b88500;margin-bottom:.3rem;}
+  .vsb-day{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:600;color:var(--ink);line-height:1.1;}
+  .vsb-sub{font-size:.75rem;color:var(--ink-mute);margin-top:.2rem;}
+  .vsb-btn{font-family:'Inter',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.65rem 1.3rem;background:#f5b300;color:#fff;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;transition:opacity .2s,transform .15s;flex-shrink:0;}
+  .vsb-btn:hover{opacity:.88;} .vsb-btn:active{transform:scale(.96);}
 
   /* 제출 버튼 */
   .qz-submit-btn{width:100%;padding:13px 30px;background:#1a9e6f;color:#fff;border:none;border-radius:16px;font-family:'Inter',sans-serif;font-size:.8rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;box-shadow:0 4px 16px rgba(26,158,111,.25);min-height:46px;margin-top:8px;transition:transform .15s,opacity .2s;touch-action:manipulation;display:flex;align-items:center;justify-content:center;gap:6px;}
@@ -650,6 +668,9 @@
     <span class="folder-jump-label">바로가기</span>
   </div>
 
+  <!-- ★ 별표 단어 진입 배너 (별표 단어가 1개 이상 있을 때만 자동 표시) -->
+  <div id="vocab-starred-banner-container"></div>
+
   <!-- 폴더 그룹 1: 단어장 -->
   <div class="folder-group collapsed" data-folder="vocab" id="folder-group-vocab" style="--fg-color:#7036e3;--fg-rgb:112,54,227;">
     <div class="folder-group-header" onclick="toggleFolderGroup('vocab')">
@@ -776,7 +797,7 @@
    ★ 앱 버전 — 변경할 때 이 값만 바꾸면 푸터·콘솔이 같이 갱신됨
    ════════════════════════════════════════════════════════════ */
 const APP_VERSION      = '2 · 3';
-const APP_VERSION_DATE = '3';
+const APP_VERSION_DATE = '4';
 
 const STUDENT_NAME = '조문주';
 const VOCAB_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwVyD25PYnOiPEOZhMGy2ZQpt8jQmG6DYM7mXB_2FaR2hCPDTk8kmqAUT4xiUSO-fHhT56N4symdII/pub?output=csv&gid=1617084488';
@@ -784,6 +805,50 @@ const MOCK_CSV  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwVyD25PYnOi
 const WEAK_CSV  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwVyD25PYnOiPEOZhMGy2ZQpt8jQmG6DYM7mXB_2FaR2hCPDTk8kmqAUT4xiUSO-fHhT56N4symdII/pub?output=csv&gid=1027447664';
 
 document.title = ' BAROG · ' + STUDENT_NAME ;
+
+
+/* ============================================================
+   ★ 단어암기 탭 별표 단어 관리 (오답탭 별표와 완전 분리)
+   ────────────────────────────────────────────────────────────
+   - 키: starred_vocab_<학생명>   (오답탭은 starred_words_<학생명>)
+   - 값: { [word]: { word, meaning, day, source:'vocab', starredAt } }
+   - 단어암기 탭의 객관식 카드에서 ⭐ 버튼으로 토글
+   - 별표 단어는 단어암기 탭 상단의 ⭐배너에서만 복습 가능
+     (오답탭의 ⭐My Stars 와는 데이터가 섞이지 않음)
+   ============================================================ */
+const VOCAB_STARRED_KEY = 'starred_vocab_' + STUDENT_NAME;
+
+function getVocabStarred() {
+  try { return JSON.parse(localStorage.getItem(VOCAB_STARRED_KEY) || '{}'); }
+  catch { return {}; }
+}
+function setVocabStarredMap(obj) {
+  try { localStorage.setItem(VOCAB_STARRED_KEY, JSON.stringify(obj)); }
+  catch (e) { console.warn('단어암기 별표 저장 실패:', e); }
+}
+function isVocabStarred(word) { return Boolean(getVocabStarred()[word]); }
+function toggleVocabStar(word, meaning, day) {
+  const all = getVocabStarred();
+  if (all[word]) {
+    delete all[word];
+  } else {
+    all[word] = {
+      word: word,
+      meaning: meaning || '',
+      day: day || '',
+      source: 'vocab',
+      starredAt: Date.now()
+    };
+  }
+  setVocabStarredMap(all);
+  // 배너 즉시 갱신 (탭에 있다면 개수가 바뀌므로)
+  try { renderVocabStarredBanner(); } catch(_) {}
+  return Boolean(all[word]);
+}
+function getVocabStarredCards() {
+  return Object.values(getVocabStarred())
+    .sort((a, b) => (b.starredAt || 0) - (a.starredAt || 0));
+}
 
 
 /* ============================================================
@@ -850,6 +915,76 @@ function switchTab(t) {
     if(!mockTabLoaded)  loadMockTab();
     if(t==='daily') loadWeakQuizBanners();
   }
+  /* ★ 단어암기 탭으로 갈 때마다 별표 배너 갱신 (별표가 늘었거나 줄었을 수 있음) */
+  if(t==='study') {
+    try { renderVocabStarredBanner(); } catch(_) {}
+  }
+}
+
+/* ============================================================
+   ★ 단어암기 탭 — 별표 진입 배너 / 별표 퀴즈 시작
+   ────────────────────────────────────────────────────────────
+   - renderVocabStarredBanner(): 별표 단어가 있을 때만 배너 표시
+   - startStarredVocabQuiz()   : 별표 단어 전체로 객관식 퀴즈 시작
+     · currentQuiz = null 로 두어 "선생님께 제출" 막힘 (자가학습 전용)
+     · 보기 후보는 단어장+모의고사 통합 풀에서 추출
+   ============================================================ */
+function renderVocabStarredBanner() {
+  const container = document.getElementById('vocab-starred-banner-container');
+  if (!container) return;
+  const starred = getVocabStarredCards();
+  if (!starred.length) { container.innerHTML = ''; return; }
+  /* 별표 단어 개수에 따라 메시지 분기 (최소 4개 필요: 객관식 4지선다) */
+  const enough = starred.length >= 4 || (allWords.length + mockWords.length) >= 4;
+  const subTxt = enough
+    ? `단어암기 중 ☆ 버튼으로 표시한 단어 ${starred.length}개`
+    : `별표 단어가 ${starred.length}개예요 · 4지선다 보기를 만들려면 단어 풀이 더 필요해요`;
+  container.innerHTML = `
+    <div class="vocab-starred-banner">
+      <div>
+        <div class="vsb-label">⭐ My Stars</div>
+        <div class="vsb-day">별표한 단어</div>
+        <div class="vsb-sub">${subTxt}</div>
+      </div>
+      <button class="vsb-btn" type="button" onclick="startStarredVocabQuiz()" ${enough?'':'disabled style="opacity:.5;cursor:not-allowed"'}>복습하기</button>
+    </div>`;
+}
+
+function startStarredVocabQuiz() {
+  const starred = getVocabStarredCards();
+  if (!starred.length) { alert('별표한 단어가 없어요'); return; }
+  /* 보기 후보 풀: 단어장 + 모의고사 통합. 비어있으면 별표 단어 자체로라도 보기를 만듦 */
+  const pool = [...allWords, ...mockWords];
+  const effectivePool = pool.length >= 4 ? pool : starred;
+  if (effectivePool.length < 4) {
+    alert('객관식 4지선다를 만들기에 단어가 부족해요.\n단어장/모의고사 데이터가 로드된 후 다시 시도해 주세요.');
+    return;
+  }
+  /* 별표 카드 → 퀴즈 큐 구성 */
+  const cards = starred.map(s => ({
+    word:    s.word,
+    meaning: s.meaning,
+    day:     s.day || '⭐'
+  }));
+  qzQueue = cards.map(w => ({
+    ...w,
+    _opts:   qzBuildOpts(w, effectivePool),
+    _result: null,
+    _picked: null
+  }));
+  qzPos = 0; qzAnswered = false; qzWrong = [];
+  qzStage = 'mc';
+  qzOriginalTotal = qzQueue.length;
+  qzStartTime = Date.now();
+  currentQuiz = null;   // ★ 자가학습이므로 null — 결과 화면에서 제출 버튼이 자동으로 숨겨짐
+  QUIZ_CONFIG = { day: '⭐ 별표 단어', count: qzQueue.length };
+  document.getElementById('qz-title').textContent = '⭐ 별표 단어 복습';
+  document.getElementById('qz-overlay').style.display = 'flex';
+  history.pushState({ quiz: true }, '', location.href);
+  qzUpdatePill();
+  qzBuildDots();
+  qzRenderQ(1);
+  qzInitSwipe();
 }
 
 /* ★ 배너 로더 완료 추적 — Daily Test 의 "로딩 중 / 시험 있음 / 빈 상태" 전환용
@@ -1715,8 +1850,11 @@ async function qzRenderQ(dir=1){
   const hint=q._result?`<div class="qz-swipe-hint show">${qzPos<qzQueue.length-1?'← 스와이프해서 다음 문제':'← 스와이프해서 결과 보기'}</div>`:'';
 
   /* TTS 버튼 — onclick 인라인 제거, data-word 속성 사용 */
+  /* ★ 별표 버튼 — 단어암기 탭 별표 (오답탭과 별도 키 사용) */
+  const _qzStarred = isVocabStarred(q.word);
   await qzRenderStage(`
-    <div class="qz-card-line${qzStage==='retry'?' retry':''}"></div>
+    <div class="qz-card-line${qzStage==='retry'?' retry':''}${_qzStarred?' starred-line':''}"></div>
+    <button class="qz-star-corner${_qzStarred?' starred':''}" type="button" data-star-word="${esc(q.word)}" aria-label="별표" title="${_qzStarred?'별표 해제':'모르는 단어로 표시'}">${_qzStarred?'★':'☆'}</button>
     <button class="qz-tts qz-tts-corner" type="button" data-word="${esc(q.word)}">🔊</button>
     <div class="qz-content">
       <div class="qz-badges"><span class="qz-badge qz-badge-num">${esc(q.day)}</span></div>
@@ -1742,6 +1880,20 @@ async function qzRenderQ(dir=1){
       ttsCorner.addEventListener('click', e => {
         e.stopPropagation();
         ttsPlay(ttsCorner.dataset.word, ttsCorner);
+      });
+    }
+    /* ★ 별표 버튼 클릭 — 현재 단어를 별표 토글 */
+    const starBtn = qzCardEl.querySelector('.qz-star-corner');
+    if(starBtn) {
+      starBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        qzHaptic(8);
+        const nowStarred = toggleVocabStar(q.word, q.meaning, q.day);
+        starBtn.classList.toggle('starred', nowStarred);
+        starBtn.textContent = nowStarred ? '★' : '☆';
+        starBtn.title = nowStarred ? '별표 해제' : '모르는 단어로 표시';
+        const line = qzCardEl.querySelector('.qz-card-line');
+        if(line) line.classList.toggle('starred-line', nowStarred);
       });
     }
   }
@@ -1842,10 +1994,10 @@ function qzRenderResult(){
       <div class="qz-result-sub">정답률 ${pct}%</div>
       ${wrongHTML}
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
-        <button class="qz-submit-btn" id="qz-submit-btn" onclick="submitResult(${correct}, ${allTotal})">
+        ${currentQuiz ? `<button class="qz-submit-btn" id="qz-submit-btn" onclick="submitResult(${correct}, ${allTotal})">
           📤 선생님께 제출하기
-        </button>
-        <button class="qz-start-btn" style="width:100%" onclick="startQuiz()">↻ 다시 풀기</button>
+        </button>` : ''}
+        <button class="qz-start-btn" style="width:100%" onclick="${currentQuiz ? 'startQuiz()' : 'startStarredVocabQuiz()'}">↻ 다시 풀기</button>
       </div>
     </div>`,1);
 }
@@ -2344,8 +2496,11 @@ async function mqRenderQ(dir=1) {
     ? `<div class="qz-swipe-hint show">${mqPos<mqQueue.length-1?'← 스와이프해서 다음 문제':'← 스와이프해서 결과 보기'}</div>`
     : '';
 
+  /* ★ 별표 버튼 — 단어암기 탭 별표 (모의고사·추가단어 퀴즈에서도 동일하게 토글) */
+  const _mqStarred = isVocabStarred(q.word);
   await mqRenderStage(`
-    <div class="qz-card-line ${mqMode === 'weak' ? 'weak' : 'mock'}"></div>
+    <div class="qz-card-line ${mqMode === 'weak' ? 'weak' : 'mock'}${_mqStarred?' starred-line':''}"></div>
+    <button class="qz-star-corner${_mqStarred?' starred':''}" type="button" data-star-word="${esc(q.word)}" aria-label="별표" title="${_mqStarred?'별표 해제':'모르는 단어로 표시'}">${_mqStarred?'★':'☆'}</button>
     <button class="qz-tts qz-tts-corner" type="button" data-word="${esc(q.word)}">🔊</button>
     <div class="qz-content">
       <div class="qz-badges"><span class="qz-badge qz-badge-num">${esc(mqMode === 'weak' ? '추가 단어' : q.day)}</span></div>
@@ -2364,6 +2519,20 @@ async function mqRenderQ(dir=1) {
     });
     const ttsCorner = mqCardEl.querySelector('.qz-tts-corner');
     if(ttsCorner) ttsCorner.addEventListener('click', e => { e.stopPropagation(); ttsPlay(ttsCorner.dataset.word, ttsCorner); });
+    /* ★ 별표 버튼 클릭 */
+    const starBtn = mqCardEl.querySelector('.qz-star-corner');
+    if(starBtn) {
+      starBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        qzHaptic(8);
+        const nowStarred = toggleVocabStar(q.word, q.meaning, q.day);
+        starBtn.classList.toggle('starred', nowStarred);
+        starBtn.textContent = nowStarred ? '★' : '☆';
+        starBtn.title = nowStarred ? '별표 해제' : '모르는 단어로 표시';
+        const line = mqCardEl.querySelector('.qz-card-line');
+        if(line) line.classList.toggle('starred-line', nowStarred);
+      });
+    }
   }
   mqUpdateDots();
   if(!q._result) {
