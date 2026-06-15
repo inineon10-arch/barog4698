@@ -39,6 +39,23 @@
   .folder-count.zero{color:var(--green);background:#e8f7f0;border-color:#b8e4d0;}
   .folder-arrow{font-size:1rem;color:var(--muted);}
   .folder:hover .folder-arrow{color:var(--wrong-col);}
+
+  /* ★ Self Test 버튼 — 폴더 카드 footer 의 카운트 옆 (객관식 자가학습 진입) */
+  .self-test-btn{
+    font-family:'Space Grotesk',sans-serif;font-size:0.62rem;font-weight:700;
+    letter-spacing:0.5px;padding:4px 9px;border-radius:12px;
+    background:var(--pill-wrong);color:var(--wrong-col);
+    border:1px solid #ffcccc;cursor:pointer;
+    display:inline-flex;align-items:center;gap:3px;line-height:1;
+    transition:all .15s;text-decoration:none;
+  }
+  .self-test-btn:hover{background:var(--wrong-col);color:#fff;border-color:var(--wrong-col);}
+  .self-test-btn:active{transform:scale(.92);}
+  /* 별표 폴더 변형 — 노란 강조 */
+  .folder.starred .self-test-btn{background:#fff8d6;color:#b88500;border-color:#ffe88a;}
+  .folder.starred .self-test-btn:hover{background:#f5b300;color:#fff;border-color:#f5b300;}
+  /* footer 안 카운트 + Self Test 버튼 같이 표시되도록 갭 조정 */
+  .folder-foot-actions{display:flex;align-items:center;gap:6px;}
   /* ★ 별표 단어 전용 폴더 — 노란 강조 */
   .folder.starred{grid-column:1 / -1;}
   .folder.starred .folder-top{background:linear-gradient(90deg,#f5b300 0%,#ffd966 100%);}
@@ -187,6 +204,10 @@ async function loadFolders(){
       a.href=g.set
         ? `wrong-flashcard.html?date=${g.date}&set=${encodeURIComponent(g.set)}`
         : `wrong-flashcard.html?date=${g.date}`;
+      /* Self Test URL 도 같은 파라미터 — wrong-quiz.html 로 분기 */
+      const quizHref=g.set
+        ? `wrong-quiz.html?date=${g.date}&set=${encodeURIComponent(g.set)}`
+        : `wrong-quiz.html?date=${g.date}`;
       // 제목 있으면 제목, 없으면 날짜
       const mainLabel=g.title || fmtDate(g.date);
       // 보조 라벨: 제목이 있으면 날짜+요일, 없으면 요일만 / 세트가 있으면 세트도 표시
@@ -202,9 +223,19 @@ async function loadFolders(){
           <div class="folder-day">${subParts.join(' ')}</div>
         </div>
         <div class="folder-foot">
-          <span class="folder-count">오답 ${g.count}개</span>
+          <div class="folder-foot-actions">
+            <span class="folder-count">오답 ${g.count}개</span>
+            <a class="self-test-btn" href="${quizHref}" data-self-test>🎯 Self Test</a>
+          </div>
           <span class="folder-arrow">→</span>
         </div>`;
+      /* ★ Self Test 버튼 — 폴더 카드 본체의 a 태그 이동을 막고 객관식 페이지로 이동 */
+      const selfBtn=a.querySelector('[data-self-test]');
+      selfBtn.addEventListener('click',(e)=>{
+        e.stopPropagation();
+        /* a 태그의 기본 href 동작은 그대로 두어 객관식 페이지로 이동 */
+        /* 다만 부모 a 의 클릭 전파는 막음 */
+      });
       grid.appendChild(a);
     });
 
@@ -237,9 +268,15 @@ function renderStarredFolder(grid) {
           <div class="folder-day">내가 모른다고 표시한 단어 모음</div>
         </div>
         <div class="folder-foot">
-          <span class="folder-count">${starredCount}개</span>
+          <div class="folder-foot-actions">
+            <span class="folder-count">${starredCount}개</span>
+            <a class="self-test-btn" href="wrong-quiz.html?starred=1" data-self-test>🎯 Self Test</a>
+          </div>
           <span class="folder-arrow">→</span>
         </div>`;
+      /* ★ Self Test 버튼 — 부모 a 의 클릭 전파 방지 (자체 href 로 이동) */
+      const selfBtn=sa.querySelector('[data-self-test]');
+      selfBtn.addEventListener('click',(e)=>{ e.stopPropagation(); });
       // 항상 그리드 맨 앞에 삽입
       grid.insertBefore(sa, grid.firstChild);
     }
