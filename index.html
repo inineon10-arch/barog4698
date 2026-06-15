@@ -5,8 +5,10 @@
   현재 버전: v2.3  (2026-06-10)
 ─────────────────────────────────────────────────────────────────
   변경 이력:
+ v2.3.6 — 모르는 단어 별표시 버그 수정
  v2.3.4 — 단어암기탭에 모르는 단어 별표시
  v2.3.3 — daily test 에 모르는 단어 별표시
+ v2.3.3 — 오답단어에 모르는 단어 별표시
  v2.3 — Daily Test 로딩 중 상태 표시
   v2.2 — 모바일 탭 라벨 축약 (오답/Test/암기) + 시험 개수 뱃지
   v2.1 — 첫 화면을 Daily Test 로 변경
@@ -680,6 +682,21 @@
     <span class="folder-jump-label">바로가기</span>
   </div>
 
+  <!-- ★ 폴더 그룹 0: 별표 단어 (별표 단어가 1개라도 있을 때만 자동 표시 — 처음부터 펼친 상태) -->
+  <div class="folder-group" data-folder="starred" id="folder-group-starred" style="--fg-color:#b88500;--fg-rgb:245,179,0;display:none;">
+    <div class="folder-group-header" onclick="toggleFolderGroup('starred')">
+      <span class="folder-group-toggle">▼</span>
+      <span class="folder-group-icon">⭐</span>
+      <span class="folder-group-name">별표 단어</span>
+      <span class="folder-group-meta" id="starred-meta-inline" style="display:none">
+        <strong id="starred-total">0</strong>개 단어
+      </span>
+    </div>
+    <div class="folder-group-body">
+      <div id="starred-content"></div>
+    </div>
+  </div>
+
   <!-- 폴더 그룹 1: 단어장 -->
   <div class="folder-group collapsed" data-folder="vocab" id="folder-group-vocab" style="--fg-color:#7036e3;--fg-rgb:112,54,227;">
     <div class="folder-group-header" onclick="toggleFolderGroup('vocab')">
@@ -806,7 +823,7 @@
    ★ 앱 버전 — 변경할 때 이 값만 바꾸면 푸터·콘솔이 같이 갱신됨
    ════════════════════════════════════════════════════════════ */
 const APP_VERSION      = '2 · 3';
-const APP_VERSION_DATE = '5';
+const APP_VERSION_DATE = '6';
 
 const STUDENT_NAME = '조문주';
 const VOCAB_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwVyD25PYnOiPEOZhMGy2ZQpt8jQmG6DYM7mXB_2FaR2hCPDTk8kmqAUT4xiUSO-fHhT56N4symdII/pub?output=csv&gid=1617084488';
@@ -851,8 +868,8 @@ function toggleVocabStar(word, meaning, day) {
   setVocabStarredMap(all);
   /* 같은 단어가 여러 카드에 있을 수 있으니 (예: 단어장+모의고사 중복) 화면 동기화 */
   syncStarUIForWord(word, Boolean(all[word]));
-  /* 상단 ⭐ 칩 갱신 */
-  try { updateVocabStarredChip(); } catch(_) {}
+  /* 별표 영역 갱신 (그리드 재렌더 + 바로가기 칩 갱신) */
+  try { renderStarredWordsSection(); } catch(_) {}
   return Boolean(all[word]);
 }
 function getVocabStarredCards() {
@@ -938,6 +955,10 @@ function switchTab(t) {
     if(!vocabLoaded)    loadVocab();
     if(!mockTabLoaded)  loadMockTab();
     if(t==='daily') loadWeakQuizBanners();
+  }
+  /* ★ 단어암기 탭 진입 시 별표 영역 갱신 — 다른 곳에서 별표 토글됐을 수 있음 */
+  if(t==='study') {
+    try { renderStarredWordsSection(); } catch(_) {}
   }
 }
 
@@ -1943,10 +1964,10 @@ function qzRenderResult(){
       <div class="qz-result-sub">정답률 ${pct}%</div>
       ${wrongHTML}
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
-        ${currentQuiz ? `<button class="qz-submit-btn" id="qz-submit-btn" onclick="submitResult(${correct}, ${allTotal})">
+        <button class="qz-submit-btn" id="qz-submit-btn" onclick="submitResult(${correct}, ${allTotal})">
           📤 선생님께 제출하기
-        </button>` : ''}
-        <button class="qz-start-btn" style="width:100%" onclick="${currentQuiz ? 'startQuiz()' : 'startStarredVocabQuiz()'}">↻ 다시 풀기</button>
+        </button>
+        <button class="qz-start-btn" style="width:100%" onclick="startQuiz()">↻ 다시 풀기</button>
       </div>
     </div>`,1);
 }
@@ -2759,16 +2780,19 @@ function scrollToFolder(folderId) {
   window.scrollTo({ top, behavior: 'smooth' });
 }
 
-/* 등록된 폴더 그룹들을 자동 탐색해서 칩 생성 (확장성) */
+/* 등록된 폴더 그룹들을 자동 탐색해서 칩 생성 (확장성)
+   - display:none 폴더 그룹은 스킵 (예: 별표 단어가 0개일 때) */
 function buildFolderJumpBar() {
   const bar = document.getElementById('folder-jump-bar');
   if(!bar) return;
-  // 라벨 외의 기존 칩 모두 제거 (별표 칩도 함께 제거되며, 끝에서 다시 추가됨)
-  bar.querySelectorAll('.folder-jump-chip, .folder-jump-spacer').forEach(c => c.remove());
+  // 라벨 외의 기존 칩 모두 제거
+  bar.querySelectorAll('.folder-jump-chip').forEach(c => c.remove());
 
   const groups = document.querySelectorAll('.folder-group');
   let any = false;
   groups.forEach(group => {
+    /* ★ 숨겨진 폴더 그룹(예: 별표 0개)은 칩도 만들지 않음 */
+    if(group.style.display === 'none') return;
     const id   = group.dataset.folder;
     const name = group.querySelector('.folder-group-name')?.textContent || id;
     const icon = group.querySelector('.folder-group-icon')?.textContent || '📁';
@@ -2783,85 +2807,76 @@ function buildFolderJumpBar() {
     bar.appendChild(chip);
     if(count > 0) any = true;
   });
-
-  /* ★ 별표 단어 칩 — 우측 끝에 자동 배치 (별표가 1개라도 있을 때만) */
-  appendVocabStarredChip(bar);
-
-  bar.style.display = (any || getVocabStarredCards().length > 0) ? 'flex' : 'none';
-}
-
-/* ★ 별표 단어 칩을 바로가기 바 우측 끝에 추가 */
-function appendVocabStarredChip(bar) {
-  if(!bar) bar = document.getElementById('folder-jump-bar');
-  if(!bar) return;
-  const starredCount = getVocabStarredCards().length;
-  if(starredCount === 0) return;
-
-  /* 우측 정렬용 spacer (다른 칩들과 별표 칩 사이를 띄움) */
-  const spacer = document.createElement('span');
-  spacer.className = 'folder-jump-spacer';
-  bar.appendChild(spacer);
-
-  const chip = document.createElement('span');
-  chip.className = 'folder-jump-chip starred-chip';
-  chip.id = 'vocab-starred-chip';
-  chip.innerHTML = `<span class="folder-jump-chip-icon">⭐</span>별표 단어<span class="folder-jump-chip-count">${starredCount}</span>`;
-  chip.addEventListener('click', () => startStarredVocabQuiz());
-  bar.appendChild(chip);
-}
-
-/* ★ 별표 단어 칩만 부분 갱신 — 토글 시 호출됨 (전체 buildFolderJumpBar 보다 가벼움) */
-function updateVocabStarredChip() {
-  const bar = document.getElementById('folder-jump-bar');
-  if(!bar) return;
-  /* 기존 별표 칩 + spacer 제거 후 다시 추가 */
-  bar.querySelectorAll('#vocab-starred-chip, .folder-jump-spacer').forEach(el => el.remove());
-  appendVocabStarredChip(bar);
-  /* 바로가기 바가 비어있다가 별표만 추가된 경우 표시 처리 */
-  const anyChip = bar.querySelector('.folder-jump-chip');
-  bar.style.display = anyChip ? 'flex' : 'none';
+  bar.style.display = any ? 'flex' : 'none';
 }
 
 /* ============================================================
-   ★ 별표 단어 객관식 퀴즈 시작 (단어암기 탭 안에서만 진입)
+   ★ 별표 단어 영역 렌더링 — 단어암기 탭의 별표 폴더 그룹 채우기
    ────────────────────────────────────────────────────────────
-   - 별표 단어 전체를 한 번에 풀음 (day 무관)
-   - 보기 후보 풀: allWords + mockWords 통합 (없으면 별표 단어로 대체)
-   - currentQuiz = null 로 두어 결과화면에서 "선생님께 제출" 자동 숨김
+   - 별표 단어가 1개라도 있으면: 폴더 그룹 표시 + vcard 그리드 렌더
+   - 별표 0개면: 폴더 그룹 전체 숨김
+   - 별표 토글, 페이지 진입, 탭 전환 시점에 호출됨
+   - 단어장 카드와 동일한 .vcard 컴포넌트 재사용 → 동일한 학습 경험
    ============================================================ */
-function startStarredVocabQuiz() {
+function renderStarredWordsSection() {
+  const group = document.getElementById('folder-group-starred');
+  if (!group) return;
+
   const starred = getVocabStarredCards();
-  if (!starred.length) { alert('별표한 단어가 없어요'); return; }
-  const pool = [...allWords, ...mockWords];
-  const effectivePool = pool.length >= 4 ? pool : starred;
-  if (effectivePool.length < 4) {
-    alert('객관식 4지선다를 만들기에 단어가 부족해요.\n단어장/모의고사 데이터가 로드된 후 다시 시도해 주세요.');
+  const totalEl = document.getElementById('starred-total');
+  const metaEl  = document.getElementById('starred-meta-inline');
+  const content = document.getElementById('starred-content');
+
+  if (starred.length === 0) {
+    /* 별표 0개 → 폴더 그룹 전체 숨김 + 바로가기 칩도 자동 사라짐 */
+    group.style.display = 'none';
+    if(totalEl) totalEl.textContent = '0';
+    if(content) content.innerHTML = '';
+    buildFolderJumpBar();
     return;
   }
-  const cards = starred.map(s => ({
-    word:    s.word,
-    meaning: s.meaning,
-    day:     s.day || '⭐'
-  }));
-  qzQueue = cards.map(w => ({
-    ...w,
-    _opts:   qzBuildOpts(w, effectivePool),
-    _result: null,
-    _picked: null
-  }));
-  qzPos = 0; qzAnswered = false; qzWrong = [];
-  qzStage = 'mc';
-  qzOriginalTotal = qzQueue.length;
-  qzStartTime = Date.now();
-  currentQuiz = null;
-  QUIZ_CONFIG = { day: '⭐ 별표 단어', count: qzQueue.length };
-  document.getElementById('qz-title').textContent = '⭐ 별표 단어 복습';
-  document.getElementById('qz-overlay').style.display = 'flex';
-  history.pushState({ quiz: true }, '', location.href);
-  qzUpdatePill();
-  qzBuildDots();
-  qzRenderQ(1);
-  qzInitSwipe();
+
+  /* 별표 1개 이상 → 폴더 그룹 표시 */
+  group.style.display = '';
+  if(totalEl) totalEl.textContent = starred.length;
+  if(metaEl)  metaEl.style.display = '';
+
+  /* vcard 그리드 렌더 — 단어장과 같은 .vocab-cards 클래스 재사용 */
+  if(!content) return;
+  content.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'vocab-cards';
+  grid.style.marginTop = '.4rem';
+
+  starred.forEach(s => {
+    const c = document.createElement('div');
+    c.className = 'vcard starred-card';
+    c.dataset.word = s.word;
+    c.innerHTML = `<button type="button" class="vcard-star starred" aria-label="별표" title="별표 해제">★</button>
+      <div class="vcard-tts" title="발음 듣기">🔊</div>
+      <div class="vcard-en">${esc(s.word)}</div>
+      <div class="vcard-ko">${esc(s.meaning || '')}</div>
+      <div class="vcard-hint">탭해서 뜻 보기</div>`;
+    c.addEventListener('click', (e) => {
+      if(e.target.closest('.vcard-tts')) return;
+      if(e.target.closest('.vcard-star')) return;
+      c.classList.toggle('open');
+      if(c.classList.contains('open')) ttsPlay(s.word, c.querySelector('.vcard-tts'));
+    });
+    const ttsBtn = c.querySelector('.vcard-tts');
+    ttsBtn.addEventListener('click', (e) => { e.stopPropagation(); ttsPlay(s.word, ttsBtn); });
+    /* ★ 별표 해제 — 클릭하면 별표 목록에서 제거되고 영역 자동 갱신 */
+    const starBtn = c.querySelector('.vcard-star');
+    starBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleVocabStar(s.word, s.meaning, s.day);
+    });
+    grid.appendChild(c);
+  });
+  content.appendChild(grid);
+
+  /* 바로가기 칩 갱신 (buildFolderJumpBar 가 폴더 그룹 자동 스캔 → 별표 칩 자동 추가) */
+  buildFolderJumpBar();
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
